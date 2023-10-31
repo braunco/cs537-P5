@@ -93,4 +93,5 @@ sys_uptime(void)
 int
 sys_mmap(void) {
   // TODO: IMPLEMENTATION HERE
+  return 0;
 }
