@@ -89,3 +89,12 @@ sys_uptime(void)
   release(&tickslock);
   return xticks;
 }
+
+
+int
+sys_mmap(void) {
+  // TODO: IMPLEMENTATION HERE
+
+
+  return 0;
+}
