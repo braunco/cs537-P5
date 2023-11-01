@@ -96,5 +96,5 @@ sys_mmap(void) {
   // TODO: IMPLEMENTATION HERE
 
 
-  return 0;
+  return 11;
 }
