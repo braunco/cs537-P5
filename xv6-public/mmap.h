@@ -9,6 +9,3 @@
 /* Protections on memory mapping */
 #define PROT_READ 0x1
 #define PROT_WRITE 0X2
-
-
-#define PAGE_SIZE 4096

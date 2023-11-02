@@ -107,7 +107,7 @@ sys_mmap(void) {
     return -1;
   }
   addr = (void*) addrInt;
-  if((int)addr % PAGE_SIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
+  if((int)addr % PGSIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
     return -1;
   }
 
@@ -149,5 +149,5 @@ sys_mmap(void) {
   mmap_entry->flags = flags;
   mmap_entry->length = PGROUNDUP(length);
 
-  return start_addr;
+  return (int)start_addr; // I think this is the correct cast
 }
