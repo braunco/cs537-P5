@@ -163,6 +163,11 @@ sys_mmap(void) {
     start_addr = addr;
     end_addr = addr + PGROUNDUP(length);
     cprintf("end addr=%d\n", end_addr);
+    if(walkpgdir(curproc->pgdir, start_addr, 0) != 0)
+    {
+      cprintf("fixed set and already mapped\n");
+      return -1;
+    }
   } else {
     // Find a free region in the address space
     // TODO: Implement the logic to find a free region
