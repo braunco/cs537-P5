@@ -2,7 +2,7 @@
 #include "stat.h"
 #include "user.h"
 #include "mmap.h"
-int main(int argc, char *argv[])
+int main(void)
 {
     /*
     //void *mmap(void *addr, int length, int prot, int flags, int fd, int offset);
@@ -22,6 +22,7 @@ int main(int argc, char *argv[])
     int length = 4096; // one page
     char *addr = mmap(0, length, PROT_WRITE, MAP_ANONYMOUS, -1, 0);
     if((int)addr == -1) {
+        //printf(1, "addr=%p\n", addr);
         printf(1, "mmap failed\n");
         exit();
     }
