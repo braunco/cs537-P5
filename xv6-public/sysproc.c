@@ -111,19 +111,8 @@ sys_mmap(void) {
     return -1;
   }
 
-  if(argint(1, &length) <= 0) {
-    return -1;
-  }
-  if(argint(2, &prot) < 0) {
-    return -1;
-  }
-  if(argint(3, &flags) < 0) {
-    return -1;
-  }
-  if(argint(4, &fd) < 0) {
-    return -1;
-  }
-  if(argint(5, &offset) < 0) {
+  if(argint(1, &length) <= 0 || argint(2, &prot) < 0 || argint(3, &flags) < 0
+  || argint(4, &fd) < 0 || argint(5, &offset) < 0) {
     return -1;
   }
 
