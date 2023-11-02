@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "mmap.h"
 
 int
 sys_fork(void)
@@ -91,10 +92,50 @@ sys_uptime(void)
 }
 
 
+//void *mmap(void *addr, int length, int prot, int flags, int fd, int offset)
 int
 sys_mmap(void) {
   // TODO: IMPLEMENTATION HERE
+  int addrInt, length, prot, flags, fd, offset;
+  void* addr;
+  
+  //char* charAddr;
+  // if(argptr(0, &charAddr, sizeof(void*)) < 0) {
+  //   return -1;
+  // }
+  if(argint(0, &addrInt) < 0) {
+    return -1;
+  }
+  addr = (void*) addrInt;
+  if((int)addr % PAGE_SIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
+    return -1;
+  }
 
+  if(argint(1, &length) < 0) {
+    return -1;
+  }
+  if(argint(2, &prot) < 0) {
+    return -1;
+  }
+  if(argint(3, &flags) < 0) {
+    return -1;
+  }
+  if(argint(4, &fd) < 0) {
+    return -1;
+  }
+  if(argint(5, &offset) < 0) {
+    return -1;
+  }
 
-  return 11;
+  //NOT file backed. ignore fd and offset
+  if(flags & MAP_ANONYMOUS) {
+
+  }
+
+  //addr returend must be EXACTLY addr
+  if(flags & MAP_FIXED) {
+    
+  }
+
+  return 0;
 }
