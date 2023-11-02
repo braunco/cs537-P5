@@ -12,6 +12,13 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
+struct mmap {
+  void *va;       // Virtual address of the memory mapping
+  int flags;      // Flags associated with the memory mapping
+  int length;     // Size of the memory mapping
+  // Add more fields if necessary
+};
+
 static struct proc *initproc;
 
 int nextpid = 1;
@@ -111,6 +118,14 @@ found:
   p->context = (struct context*)sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
+
+  // Initialize mmaps array and num_mmaps field
+  for (int i = 0; i < MAX_MMAPS; i++) {
+    p->mmaps[i].va = 0;  // Initialize virtual address to 0
+    p->mmaps[i].flags = 0;  // Initialize flags to 0
+    p->mmaps[i].length = 0;  // Initialize length to 0
+  }
+  p->num_mmaps = 0;  // Initialize the number of memory mappings to 0
 
   return p;
 }
