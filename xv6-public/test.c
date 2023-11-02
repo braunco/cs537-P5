@@ -1,8 +1,10 @@
 #include "types.h"
 #include "stat.h"
 #include "user.h"
-int main(void)
+#include "mmap.h"
+int main(int argc, char *argv[])
 {
+    /*
     //void *mmap(void *addr, int length, int prot, int flags, int fd, int offset);
     void *getback;
     void *bruh;
@@ -11,6 +13,27 @@ int main(void)
 
     if((int)getback < 0) {
         printf(1, "it errored\n");
+    }
+
+    exit();
+    */
+
+    // Connor's test:
+    int length = 4096; // one page
+    char *addr = mmap(0, length, PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+    if((int)addr == -1) {
+        printf(1, "mmap failed\n");
+        exit();
+    }
+
+    // Test writing to allocated memory
+    addr[0] = 'a';
+    addr[length - 1] = 'z';
+
+    if(addr[0] != 'a' || addr[length - 1] != 'z') {
+        printf(1, "Memory write failed\n");
+    } else {
+        printf(1, "Memeory write succeeded\n");
     }
 
     exit();

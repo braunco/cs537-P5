@@ -117,11 +117,11 @@ sys_mmap(void) {
   }
 
   if ((flags & MAP_ANONYMOUS) && fd != -1) {
-    return (void*)-1;
+    return -1;
   }
 
   if ((flags & MAP_FIXED) && addr == 0) {
-    return (void*)-1;
+    return -1;
   }
 
   struct proc *curproc = myproc();
@@ -137,7 +137,7 @@ sys_mmap(void) {
   }
 
   if (start_addr >= end_addr) {
-    return (void*)-1;
+    return -1;
   }
 
   // Update the process's page table
