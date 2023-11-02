@@ -19,23 +19,33 @@ int main(void)
     */
 
     // Connor's test:
-    int length = 4096; // one page
-    char *addr = mmap(0, length, PROT_WRITE, MAP_ANONYMOUS, -1, 0);
+    int length = 12000; // one page
+    void *addr = mmap((void*)0x60000000, length, PROT_WRITE, MAP_ANONYMOUS|MAP_FIXED, -1, 0);
+    printf(1, "addr=%p", addr);
     if((int)addr == -1) {
         //printf(1, "addr=%p\n", addr);
         printf(1, "mmap failed\n");
         exit();
     }
 
-    // Test writing to allocated memory
-    addr[0] = 'a';
-    addr[length - 1] = 'z';
+    char* charVers = (char*)addr;
 
-    if(addr[0] != 'a' || addr[length - 1] != 'z') {
-        printf(1, "Memory write failed\n");
-    } else {
-        printf(1, "Memeory write succeeded\n");
-    }
+    charVers[0] = 'a';
+    charVers[1] = '\0';
+
+    printf(1, "val: %s\n", charVers);
+
+
+    
+    // // Test writing to allocated memory
+    // addr[0] = 'a';
+    // addr[length - 1] = 'z';
+
+    // if(addr[0] != 'a' || addr[length - 1] != 'z') {
+    //     printf(1, "Memory write failed\n");
+    // } else {
+    //     printf(1, "Memeory write succeeded\n");
+    // }
 
     exit();
 }

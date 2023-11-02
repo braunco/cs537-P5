@@ -7,6 +7,9 @@
 #include "mmu.h"
 #include "proc.h"
 #include "mmap.h"
+#include "vm.h"
+
+
 
 int
 sys_fork(void)
@@ -99,12 +102,16 @@ sys_mmap(void) {
   cprintf("entered the sys_mmap() function call\n");
   int addrInt, length, prot, flags, fd, offset;
   void* addr;
+  
+  
   if(argint(0, &addrInt) < 0) {
     cprintf("error with addr int\n");
     return -1;
   }
+
   addr = (void*) addrInt;
-  if(argint(1, &length) <= 0) {
+
+  if(argint(1, &length) < 0) {
     cprintf("error length\n");
     cprintf("length=%d\n", length);
     return -1;
@@ -138,7 +145,6 @@ sys_mmap(void) {
     cprintf("error with addr int\n");
     return -1;
   }
-  addr = (void*) addrInt;
 
   if((int)addr % PGSIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
     cprintf("error with pgsize\n");
@@ -147,24 +153,16 @@ sys_mmap(void) {
 
   cprintf("addrInt=%d, addr=%p, length=%d, prot=%d, flags=%d, fd=%d, offset=%d\n", addrInt, addr, length, prot, flags, fd, offset);
   
-  
-
-  if ((flags & MAP_ANONYMOUS) && fd != -1) {
-    return -1;
-  }
-  
-
-  if ((flags & MAP_FIXED) && addr == 0) {
-    return -1;
-  }
 
   struct proc *curproc = myproc();
   void *start_addr = (void*)PHYSTOP;
   void *end_addr = (void*)KERNBASE;
 
   if (flags & MAP_FIXED) {
+
     start_addr = addr;
     end_addr = addr + PGROUNDUP(length);
+    cprintf("end addr=%d\n", end_addr);
   } else {
     // Find a free region in the address space
     // TODO: Implement the logic to find a free region
@@ -176,12 +174,35 @@ sys_mmap(void) {
 
   // Update the process's page table
   // TODO: Implement the logic to update the page table lazily
+  // Calculate the number of pages needed
+  int num_pages = PGROUNDUP(length) / PGSIZE;
+
+  // Allocate physical memory and update page table
+  char *mem;
+  for (int i = 0; i < num_pages; i++) {
+    cprintf("Entering allocation for loop\n");
+    mem = kalloc();
+    if (mem == 0) {
+      cprintf("kalloc failed\n");
+      return -1;
+    }
+    memset(mem, 0, PGSIZE);
+
+    if (mappages(curproc->pgdir, start_addr + (i * PGSIZE), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0) {
+      cprintf("mappages failed\n");
+      kfree(mem);
+      return -1;
+    }
+  }
+
 
   // Store the mapping information
   struct mmap *mmap_entry = &curproc->mmaps[curproc->num_mmaps++];
+  cprintf("made the struct\n");
   mmap_entry->va = start_addr;
   mmap_entry->flags = flags;
   mmap_entry->length = PGROUNDUP(length);
+  cprintf("initialized values\n");
 
   return (int)start_addr; // I think this is the correct cast
 }
