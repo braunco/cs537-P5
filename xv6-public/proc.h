@@ -10,6 +10,13 @@ struct cpu {
   struct proc *proc;           // The process running on this cpu or null
 };
 
+struct mmap {
+  void *va;       // Virtual address of the memory mapping
+  int flags;      // Flags associated with the memory mapping
+  int length;     // Size of the memory mapping
+  // Add more fields if necessary
+};
+
 extern struct cpu cpus[NCPU];
 extern int ncpu;
 

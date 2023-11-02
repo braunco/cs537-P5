@@ -111,7 +111,7 @@ sys_mmap(void) {
     return -1;
   }
 
-  if(argint(1, &length) < 0) {
+  if(argint(1, &length) <= 0) {
     return -1;
   }
   if(argint(2, &prot) < 0) {
@@ -127,15 +127,38 @@ sys_mmap(void) {
     return -1;
   }
 
-  //NOT file backed. ignore fd and offset
-  if(flags & MAP_ANONYMOUS) {
-
+  if ((flags & MAP_ANONYMOUS) && fd != -1) {
+    return (void*)-1;
   }
 
-  //addr returend must be EXACTLY addr
-  if(flags & MAP_FIXED) {
-    
+  if ((flags & MAP_FIXED) && addr == 0) {
+    return (void*)-1;
   }
 
-  return 0;
+  struct proc *curproc = myproc();
+  void *start_addr = (void*)PHYSTOP;
+  void *end_addr = (void*)KERNBASE;
+
+  if (flags & MAP_FIXED) {
+    start_addr = addr;
+    end_addr = addr + PGROUNDUP(length);
+  } else {
+    // Find a free region in the address space
+    // TODO: Implement the logic to find a free region
+  }
+
+  if (start_addr >= end_addr) {
+    return (void*)-1;
+  }
+
+  // Update the process's page table
+  // TODO: Implement the logic to update the page table lazily
+
+  // Store the mapping information
+  struct mmap *mmap_entry = &curproc->mmaps[curproc->num_mmaps++];
+  mmap_entry->va = start_addr;
+  mmap_entry->flags = flags;
+  mmap_entry->length = PGROUNDUP(length);
+
+  return start_addr;
 }

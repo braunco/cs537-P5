@@ -12,12 +12,6 @@ struct {
   struct proc proc[NPROC];
 } ptable;
 
-struct mmap {
-  void *va;       // Virtual address of the memory mapping
-  int flags;      // Flags associated with the memory mapping
-  int length;     // Size of the memory mapping
-  // Add more fields if necessary
-};
 
 static struct proc *initproc;
 
