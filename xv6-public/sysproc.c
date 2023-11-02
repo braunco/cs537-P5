@@ -99,6 +99,36 @@ sys_mmap(void) {
   cprintf("entered the sys_mmap() function call\n");
   int addrInt, length, prot, flags, fd, offset;
   void* addr;
+  if(argint(0, &addrInt) < 0) {
+    cprintf("error with addr int\n");
+    return -1;
+  }
+  addr = (void*) addrInt;
+  if(argint(1, &length) <= 0) {
+    cprintf("error length\n");
+    cprintf("length=%d\n", length);
+    return -1;
+  }
+  if (argint(2, &prot) < 0) {
+    cprintf("error prot\n");
+    cprintf("prot=%d\n", prot);
+    return -1;
+  }
+  if (argint(3, &flags) < 0) {
+    cprintf("error flags\n");
+    cprintf("flags=%d\n", flags);
+    return -1;
+  }
+  if (argint(4, &fd) < 0) {
+    cprintf("error fd\n");
+    cprintf("fd=%d\n", fd);
+    return -1;
+  }
+  if (argint(5, &offset) < 0) {
+    cprintf("error offset\n");
+    cprintf("offset=%d\n", offset);
+    return -1;
+  }
   
   //char* charAddr;
   // if(argptr(0, &charAddr, sizeof(void*)) < 0) {
@@ -115,21 +145,9 @@ sys_mmap(void) {
     return -1;
   }
 
-  if(argint(1, &length) <= 0) {
-    return -1;
-  }
-  if (argint(2, &prot) < 0) {
-    return -1;
-  }
-  if (argint(3, &flags) < 0) {
-    return -1;
-  }
-  if (argint(4, &fd) < 0) {
-    return -1;
-  }
-  if (argint(5, &offset) < 0) {
-    return -1;
-  }
+  cprintf("addrInt=%d, addr=%p, length=%d, prot=%d, flags=%d, fd=%d, offset=%d\n", addrInt, addr, length, prot, flags, fd, offset);
+  
+  
 
   if ((flags & MAP_ANONYMOUS) && fd != -1) {
     return -1;
