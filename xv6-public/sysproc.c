@@ -211,3 +211,47 @@ sys_mmap(void) {
 
   return (int)start_addr; // I think this is the correct cast
 }
+
+//int munmap(void *addr, size_t length)
+int
+sys_munmap(void)
+{
+  int addrInt, length;
+  void* addr;
+
+  struct proc *currProc = myproc();
+
+  if(argint(0, &addrInt) < 0) {
+    cprintf("unmap addr error\n");
+    return -1;
+  }
+  addr = (void*)PGROUNDDOWN(addrInt);
+
+  if(argint(1, &length) < 0) {
+    cprintf("error munmap length\n");
+    cprintf("length=%d\n", length);
+    return -1;
+  }
+
+  int numpages = PGROUNDUP(length) / PGSIZE;
+
+  pte_t *pte;
+  //pde_t *pde;
+
+  for(int i=0; i<numpages; i++)
+  {
+    pte = walkpgdir(currProc->pgdir, addr + (i * PGSIZE), 0);
+    cprintf("\t\tpte %d: %d\n", i, *pte);
+
+    //pde = &currProc->pgdir[PDX(addr + (i * PGSIZE))];
+
+    if(*pte & PTE_P)
+    {
+      char* pAddr = P2V(PTE_ADDR(*pte));
+      kfree(pAddr);
+      *pte &= ~PTE_P;
+    }
+  }
+
+  return 0;
+}
