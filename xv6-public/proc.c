@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+//#include "mmap.h"
 
 struct {
   struct spinlock lock;
@@ -541,3 +542,132 @@ procdump(void)
     cprintf("\n");
   }
 }
+
+/*
+void*
+mmap(void* addr, int length, int prot, int flags, int fd, int offset) {
+  // At this time, an unused virtual memory space should be found from the process.
+  int start_addr = find_unallocated_area(length); // Not yet implemented
+  if(start_addr == 0) {
+    printf("can't find area");
+    return (void*) -1;
+  }
+
+  // mmaps struct
+  struct mmap m;
+  m.start_addr = start_addr;
+  m.end_addr = start_addr + length;
+  m.length = length.file = myproc()->ofile[fd];
+  m.flags = flags;
+  m.prot = prot;
+  m.offset = offset;
+
+  // Check if permission bits meet map requirements
+  if ((m.prot & PROT_WRITE) && (m.flags == MAP_SHARED) && (!m.file->writeable)) {
+    printf("[Kernel] mmap: prot is invalid.\n");
+    return (void*) -1;
+  }
+
+  // Add file reference
+  struct file* f = myproc()->ofile[fd];
+  fileup(f);
+
+  // Put mmaps into struct
+  if(push_mmaps(m) == -1) {
+    printf("[Kernel] mmap: fail to push mem area.\n");
+    return (void*) -1;
+  }
+  return (void*)start_addr;
+
+}
+
+int
+munmap(void* addr, int length) {
+  // Find pa related to va
+  struct mmap* mmaps = find_area((int)addr);
+
+  // Briefly consider
+  int start_addr = PGROUNDDOWN((int)addr);
+  int end_addr = PGROUNDUP((int)addr + length);
+  if (end_addr = mmaps->end_addr && start_addr == mmaps->start_addr) {
+    struct file* f = mmaps->file;
+    if(mmaps->flags == MAP_SHARED && mmaps->prot & PROT_WRITE) {
+      // Write mem area back to file
+      printf("[Kernel] start_addr: %p, length: 0x%x\n" mmaps->start_addr, mmaps->length);
+      if(filewrite(f,mmaps->start_addr, mmaps->length) < 0) {
+        printf("[Kernel] munmap: fail to write back file.\n");
+        return -1;
+      }
+    }
+
+    // Unmap and release virtual memory
+    for (int i = 0; i < mmaps->length / PGSIZE; i++) {
+      int addr = mmaps->start_addr + i * PGSIZE;
+      int pa = walkaddr(myproc()->pagetable, addr);
+      if(pa != 0) {
+        uvmunmap(myproc()->pagetable, addr, PGSIZE, 1);
+      }
+    }
+
+    // Remove file references
+    fileclose(f);
+
+    // Delete memory area from table
+    if (rm_area(mmaps) < 0) {
+      printf("[Kernel] munmap: fail to remove mem area from table.\n");
+      return -1;
+    }
+    return 0;
+  } else if (end_addr <= mmaps->end_addr && start_addr >= mmaps->start_addr) {
+    // This means area is a sub-area
+    struct file* f = mmaps->file;
+    if(mmaps->flags = MAP_SHARED && mmaps->prot & PROT_WRITE) {
+      // Write back file & get offset
+      int offset = start_addr - mmaps->start_addr;
+      int len = end_addr - start_addr;
+      if(f->type == FD_INODE) {
+        begin_op(f->ip->dev);
+        ilock(f->ip);
+        if(writei(f->ip, 1, start_addr, offset, len) < 0){
+          printf("[Kernel] munmap: fail to write back file.\n");
+          iunlock(f->ip);
+          end_op(f->ip->dev);
+          return -1;
+        }
+        iunlock(f->ip);
+        end_op(f->ip->dev);
+      }
+      
+    }
+  
+
+    // unmap and release virtual memory
+    int len = end_addr - start_addr;
+    for(int i = 0; i < len / PGSIZE; i++) {
+      int addr = start_addr + i * PGSIZE;
+      int pa = walkaddr(myproc()->pagetable, addr);
+      if (pa != 0) {
+        uvmumap(myproc()->pagetable, addr, PGSIZE, 1);
+      }
+    }
+
+    // Modify mmaps struct
+    if(start_addr == mmaps->start_addr) {
+      mmaps->offset = end_addr - mmaps->start_addr;
+      mmaps->start_addr = end_addr;
+      mmaps->length = mmaps->end_addr - mmaps->start_addr;
+    }else if(end_addr == mmaps->end_addr){
+      mmaps->end_addr = start_addr;
+      mmaps->length = mmaps->end_addr - mmaps->start_addr;
+    } else {
+      // necessary to divide into sections
+      panic("[Kernel] munmap: we're not doing this\n");
+    }
+    return 0;
+  }else if(end_addr > mmaps->end_addr){
+    panic("[Kernel] munmap: out of current range.\n");
+  }else{
+    panic("[Kernel] munmap: unresolved solution.\n");
+  }
+}
+*/

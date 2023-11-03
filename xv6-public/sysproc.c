@@ -141,10 +141,11 @@ sys_mmap(void) {
   // if(argptr(0, &charAddr, sizeof(void*)) < 0) {
   //   return -1;
   // }
-  if(argint(0, &addrInt) < 0) {
-    cprintf("error with addr int\n");
-    return -1;
-  }
+  // Redundant call
+  // if(argint(0, &addrInt) < 0) {
+  //   cprintf("error with addr int\n");
+  //   return -1;
+  // }
 
   if((int)addr % PGSIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
     cprintf("error with pgsize\n");
@@ -219,39 +220,88 @@ sys_munmap(void)
   int addrInt, length;
   void* addr;
 
-  struct proc *currProc = myproc();
-
+  // input parameter checks
   if(argint(0, &addrInt) < 0) {
     cprintf("unmap addr error\n");
     return -1;
   }
-  addr = (void*)PGROUNDDOWN(addrInt);
-
   if(argint(1, &length) < 0) {
     cprintf("error munmap length\n");
     cprintf("length=%d\n", length);
     return -1;
   }
 
-  int numpages = PGROUNDUP(length) / PGSIZE;
+  // Convert void* and round down to the nearest page boundary
+  addr = (void*)PGROUNDDOWN(addrInt);
+  //cprintf("addr=%p\n", addr);
+  length = PGROUNDUP(length); // round length up to the nearst page boundary
 
-  pte_t *pte;
-  //pde_t *pde;
+  // Calculate the # of pages to unmap
+  int numpages = length / PGSIZE;
+  if(numpages <=0) {
+    cprintf("Num pages = %d", numpages);
+    return -1; //invalid length
+  }
+
+  struct proc *currProc = myproc();
+  currProc->debug_flag = 1;
 
   for(int i=0; i<numpages; i++)
   {
-    pte = walkpgdir(currProc->pgdir, addr + (i * PGSIZE), 0);
-    cprintf("\t\tpte %d: %d\n", i, *pte);
+    // Calcualte the address of the page to unmap
+    void *pageAddr = addr + (i * PGSIZE);
 
-    //pde = &currProc->pgdir[PDX(addr + (i * PGSIZE))];
-
-    if(*pte & PTE_P)
-    {
-      char* pAddr = P2V(PTE_ADDR(*pte));
+    // Get the page table entry for the page
+    pte_t *pte = walkpgdir(currProc->pgdir, pageAddr, 0);
+    if(pte && (*pte & PTE_P)) {
+      // Free the physical mem if the page is present
+      cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
+      char *pAddr = P2V(PTE_ADDR(*pte));
       kfree(pAddr);
+
+      // Clear the page table entry
       *pte &= ~PTE_P;
+      cprintf("After clearing PTE_P, pte[%d] = %x\n", i, *pte);
+
+      // Invalidate the TLB entry for this page address
+      asm volatile("invlpg (%0)" ::"r" (pageAddr) : "memory");
+    } else {
+      cprintf("PTE note present for the page %d\n", i);
     }
+
   }
+
+  // Still have to remove the mmap entry from the struct - not implemented yet
 
   return 0;
 }
+
+/*
+int sys_mmap(void) {
+  int addr, length, offset;
+  int prot, flags, fd;
+  argaddr(0, &addr);
+  argaddr(1, &length);
+  argint(2, &prot);
+  argint(3, &flags);
+  argint(4, &fd);
+  argaddr(5, &offset);
+  int ret;
+  if((ret = (int)mmap((void*)addr, length, prot, flags, fd, offset)) < 0){
+    printf("[Kernel] fail to mmap.\n");
+    return -1;
+  }
+  return ret;
+}
+
+int sys_munmap(void){
+  int addr, length;
+  argaddr(0, &addr);
+  argaddr(1, &length);
+  int ret;
+  if((ret = munmap((void*)addr, length)) < 0){
+    return -1;
+  }
+  return ret;
+}
+*/
