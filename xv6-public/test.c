@@ -137,6 +137,30 @@ int main(void)
     }
 
     printf(1, "Dealloc worked correctly.");
+
+    // int length6 = 4096;
+    // void *addr6b = mmap((void*)0x60000000, length6, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
+    // void *addr6a = mmap((void*)0x60001000, length6, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
+    // //void *addr6c = mmap((void*)0x60000000, length6, PROT_WRITE, MAP_ANON, -1, 0);
+    // //void *addr6d = mmap((void*)0x60000000, length6, PROT_WRITE, MAP_ANON, -1, 0);
+    
+    // // Dealloc the mem
+    // if (munmap(addr6a, length6) == -1) {
+    //     printf(1, "munmap a failed\n");
+    //     exit();
+    // }
+    // if (munmap(addr6b, length6) == -1) {
+    //     printf(1, "munmap b failed\n");
+    //     exit();
+    // }
+    // if (munmap(addr6c, length6) == -1) {
+    //     printf(1, "munmap c failed\n");
+    //     exit();
+    // }
+    // if (munmap(addr6d, length6) == -1) {
+    //     printf(1, "munmap d failed\n");
+    //     exit();
+    // }
     
 
     /*

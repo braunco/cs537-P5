@@ -162,10 +162,24 @@ sys_mmap(void) {
     start_addr = addr;
     end_addr = addr + PGROUNDUP(length);
     cprintf("end addr=%d\n", end_addr);
-    if(walkpgdir(curproc->pgdir, start_addr, 0) != 0)
+
+    pde_t *pde = &curproc->pgdir[PDX(start_addr)];
+    cprintf("\tORIG THING:%x\n", *pde);
+
+    if(*pde & PTE_P){
+      cprintf("PRESENT BIT SET\n");
+    } else {
+      cprintf("PRESENT BIT NOT SET\n");
+    }
+
+    pte_t *pte_found;
+    if((pte_found = walkpgdir(curproc->pgdir, start_addr, 0)) != 0)
     {
-      cprintf("fixed set and already mapped\n");
-      return -1;
+      if(*pte_found & PTE_P)
+      {
+        cprintf("fixed set and already mapped\n");
+        return -1;
+      }
     }
   } else {
     // Find a free region in the address space
@@ -197,6 +211,11 @@ sys_mmap(void) {
       kfree(mem);
       return -1;
     }
+
+    // pde_t *pde = &curproc->pgdir[PDX(start_addr)];
+    // cprintf("pde before: %x\n", *pde);
+    // *pde |= PTE_P;
+    // cprintf("pde after: %x\n", *pde);
   }
 
 
@@ -260,10 +279,12 @@ sys_munmap(void)
       //*pte &= ~PTE_P;
       cprintf("After clearing PTE_P, pte[%d] = %x pgdir = %x\n", i, *pte);
 
-      pde_t *pde = &currProc->pgdir[PDX(addr)];
-      cprintf("pde before: %x\n", *pde);
-      *pde &= ~PTE_P;
-      cprintf("pde after: %x\n", *pde);
+      *pte &= ~PTE_P;
+
+      // pde_t *pde = &currProc->pgdir[PDX(addr)];
+      // cprintf("pde before: %x\n", *pde);
+      // *pde &= ~PTE_P;
+      // cprintf("pde after: %x\n", *pde);
 
     } else {
       cprintf("PTE note present for the page %d\n", i);
