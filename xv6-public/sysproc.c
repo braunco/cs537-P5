@@ -201,11 +201,22 @@ sys_mmap(void) {
 
 
   // Store the mapping information
-  struct mmap *mmap_entry = &curproc->mmaps[curproc->num_mmaps++];
-  cprintf("made the struct\n");
+  struct mmap *mmap_entry = 0; //= &curproc->mmaps[curproc->num_mmaps++];
+  int i;
+  for(i = 0; i < MAX_MMAPS; i++) {
+    if(curproc->mmaps[i].va == 0) {
+      mmap_entry = &curproc->mmaps[i];
+      break;
+    }
+  }
   mmap_entry->va = start_addr;
+  mmap_entry->prot = prot;
   mmap_entry->flags = flags;
+  mmap_entry->fd = fd;
   mmap_entry->length = PGROUNDUP(length);
+  mmap_entry->offset = offset;
+  cprintf("made the struct\n");
+  
   cprintf("initialized values\n");
 
   return (int)start_addr; // I think this is the correct cast
@@ -273,6 +284,22 @@ sys_munmap(void)
 
   // Still have to remove the mmap entry from the struct - not implemented yet
 
+  struct mmap *mmap_entry = 0; //= &curproc->mmaps[curproc->num_mmaps++];
+  int i;
+  for(i = 0; i < MAX_MMAPS; i++) {
+    if(currProc->mmaps[i].va == addr) {
+      mmap_entry = &currProc->mmaps[i];
+      memset((void*)mmap_entry, 0, sizeof(struct mmap));
+      break;
+    }
+  }
+
+  // struct proc *p = myproc();
+  // struct mmap *curmap;
+  // for(int i = 0; i < 32; i++) {
+  //   curmap = &p->mmaps[i];
+  //   cprintf("[%d]th mmap virtual address: %p, and length: %d\n", i, curmap->va, curmap->length);
+  // }
   return 0;
 }
 

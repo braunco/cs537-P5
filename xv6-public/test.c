@@ -95,6 +95,7 @@ int main(void)
     // }
     
 
+    /*
     //New test: Basic allocation and deallocation for munmap
     int length5 = 4096;
     void *addr5 = mmap((void*)0x60000000, length5, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
@@ -137,8 +138,26 @@ int main(void)
     }
 
     printf(1, "Dealloc worked correctly.");
-    
+    */
 
+    int length6 = 4096;
+    void *addr6a = mmap((void*)0x60000000, length6, PROT_WRITE, MAP_ANON |MAP_FIXED, -1, 0);
+    void *addr6b = mmap((void*)0x70000000, length6, PROT_WRITE, MAP_ANON |MAP_FIXED, -1, 0);
+    void *addr6c = mmap((void*)0x71000000, length6, PROT_WRITE, MAP_ANON |MAP_FIXED, -1, 0);
+    
+    // Dealloc the mem
+    if (munmap(addr6a, length6) == -1) {
+        printf(1, "munmap a failed\n");
+        exit();
+    }
+    if (munmap(addr6b, length6) == -1) {
+        printf(1, "munmap b failed\n");
+        exit();
+    }
+    if (munmap(addr6c, length6) == -1) {
+        printf(1, "munmap c failed\n");
+        exit();
+    }
     /*
     // Connor's test:
     int length = 12000; // 3 pages

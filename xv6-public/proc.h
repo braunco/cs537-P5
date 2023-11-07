@@ -14,6 +14,9 @@ struct mmap {
   void *va;       // Virtual address of the memory mapping
   int flags;      // Flags associated with the memory mapping
   int length;     // Size of the memory mapping
+  int prot;
+  int fd;
+  int offset;
   // Add more fields if necessary
 };
 
