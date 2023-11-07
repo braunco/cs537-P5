@@ -10,7 +10,6 @@
 #include "vm.h"
 
 
-
 int
 sys_fork(void)
 {
@@ -136,16 +135,7 @@ sys_mmap(void) {
     cprintf("offset=%d\n", offset);
     return -1;
   }
-  
-  //char* charAddr;
-  // if(argptr(0, &charAddr, sizeof(void*)) < 0) {
-  //   return -1;
-  // }
-  // Redundant call
-  // if(argint(0, &addrInt) < 0) {
-  //   cprintf("error with addr int\n");
-  //   return -1;
-  // }
+
 
   if((int)addr % PGSIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
     cprintf("error with pgsize\n");
@@ -153,13 +143,21 @@ sys_mmap(void) {
   }
 
   cprintf("addrInt=%d, addr=%p, length=%d, prot=%d, flags=%d, fd=%d, offset=%d\n", addrInt, addr, length, prot, flags, fd, offset);
-  
 
   struct proc *curproc = myproc();
   void *start_addr = (void*)PHYSTOP;
   void *end_addr = (void*)KERNBASE;
 
+  if(curproc->num_mmaps >= 32) {
+    cprintf("too many maps\n");
+    return -1;
+  }
+
   if (flags & MAP_FIXED) {
+
+    if(addrInt < MMAPVIRTBASE || addrInt > KERNBASE) {
+      return -1;
+    }
 
     start_addr = addr;
     end_addr = addr + PGROUNDUP(length);
@@ -244,7 +242,6 @@ sys_munmap(void)
   }
 
   struct proc *currProc = myproc();
-  currProc->debug_flag = 1;
 
   for(int i=0; i<numpages; i++)
   {
@@ -260,11 +257,14 @@ sys_munmap(void)
       kfree(pAddr);
 
       // Clear the page table entry
-      *pte &= ~PTE_P;
-      cprintf("After clearing PTE_P, pte[%d] = %x\n", i, *pte);
+      //*pte &= ~PTE_P;
+      cprintf("After clearing PTE_P, pte[%d] = %x pgdir = %x\n", i, *pte);
 
-      // Invalidate the TLB entry for this page address
-      asm volatile("invlpg (%0)" ::"r" (pageAddr) : "memory");
+      pde_t *pde = &currProc->pgdir[PDX(addr)];
+      cprintf("pde before: %x\n", *pde);
+      *pde &= ~PTE_P;
+      cprintf("pde after: %x\n", *pde);
+
     } else {
       cprintf("PTE note present for the page %d\n", i);
     }
