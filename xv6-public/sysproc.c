@@ -93,6 +93,39 @@ sys_uptime(void)
   return xticks;
 }
 
+int find_next_mmap(struct mmap mmaps[], int req_pages) {
+  struct mmap *min = 0;
+  struct mmap prev = (struct mmap) { (void*)(MMAPVIRTBASE - 1) };
+  struct mmap *sorted[MAX_MMAPS];
+  memset(&sorted, 0, sizeof(struct mmap*) * 32);
+
+  for (int a = 0; a < MAX_MMAPS; a++) {
+    sorted[a]->va = 0;
+  }
+
+  for (int i = 0; i < MAX_MMAPS; i++) {
+    if(mmaps[i].va == 0) continue;
+    for(int j = 0; j < MAX_MMAPS; j++) {
+      if(mmaps[j].va == 0) continue;
+      if ((min == 0 || mmaps[j].va < min->va) && (int)mmaps[j].va > (int)prev.va) {
+        min = &mmaps[j];
+      }
+    }
+    sorted[i] = min;
+    prev.va = min->va;
+    min = 0;
+  }
+
+  for (int i = 0; i < MAX_MMAPS - 1; i++) {
+    if ((sorted[i]->va + sorted[i]->length) + (req_pages*PGSIZE) < sorted[i+1]->va) {
+      return ((int)sorted[i]->va + sorted[i]->length);
+    }
+  }
+
+  
+  return -1;
+}
+
 
 //void *mmap(void *addr, int length, int prot, int flags, int fd, int offset)
 int
@@ -145,13 +178,15 @@ sys_mmap(void) {
   cprintf("addrInt=%d, addr=%p, length=%d, prot=%d, flags=%d, fd=%d, offset=%d\n", addrInt, addr, length, prot, flags, fd, offset);
 
   struct proc *curproc = myproc();
-  void *start_addr = (void*)PHYSTOP;
+  void *start_addr = (void*)MMAPVIRTBASE;
   void *end_addr = (void*)KERNBASE;
 
   if(curproc->num_mmaps >= 32) {
     cprintf("too many maps\n");
     return -1;
   }
+
+  int num_pages = PGROUNDUP(length) / PGSIZE;
 
   if (flags & MAP_FIXED) {
 
@@ -162,14 +197,53 @@ sys_mmap(void) {
     start_addr = addr;
     end_addr = addr + PGROUNDUP(length);
     cprintf("end addr=%d\n", end_addr);
-    if(walkpgdir(curproc->pgdir, start_addr, 0) != 0)
+    pte_t *pte_found;
+    if((pte_found = walkpgdir(curproc->pgdir, start_addr, 0)) != 0)
     {
-      cprintf("fixed set and already mapped\n");
-      return -1;
+      if(*pte_found & PTE_P)
+      {
+        cprintf("fixed set and already mapped\n");
+        return -1;
+      }
     }
   } else {
     // Find a free region in the address space
     // TODO: Implement the logic to find a free region
+    // For loop through the virtual memory (i)
+    //    if virtual address has free starting addr is true (I see what you're saying about a for loop to see addresses - maybe there's a way just to see if the bits are occupied?)
+    //          Nested for loop to run until a new mapping is hit (j)
+    //          space available = difference between (i) and (j)
+    //          if space available >= requested length
+    //                add to address starting at (i)
+    //          else
+    //                get the current map length and add it to i
+    //                (to get to the end of the current mapping you hit so you can starting checking free space again)
+    //    else 
+    //          get the current mmap length and add it to i 
+    //          (to get to the end of the current mapping you hit so you can start checking free space again)
+    
+    int next_addr = find_next_mmap(curproc->mmaps, num_pages);
+    cprintf("\t%d\n", next_addr);
+    if(next_addr != -1) {
+      start_addr = (void*)next_addr;
+    }
+    else {
+      return -1;
+    }
+    // for(int i = MMAPVIRTBASE; i < KERNBASE; i+=PGSIZE) { // make sure that I can iterate properly
+    //   if(1/*virtual address at i doesn't have a mapping (delete the one)*/) {
+    //     for(int j = i; j < MMAPVIRTBASE; j+=PGSIZE) {
+    //       if(1/*Virtual address at j doesn't have a mapping (delete the one)*/) {
+            
+    //       } else { // Virtual address at j does have a mapping
+    //         /*int difference = i + j*/
+    //         if (1/*difference >= curproc->mmaps->length (delete the one)*/) {
+    //       }
+    //     }
+    //   } else {
+    //     i += 1/*this i's current mapping's length (delete the 1)*/;
+    //   }
+    // }
   }
 
   if (start_addr >= end_addr) {
@@ -179,7 +253,7 @@ sys_mmap(void) {
   // Update the process's page table
   // TODO: Implement the logic to update the page table lazily
   // Calculate the number of pages needed
-  int num_pages = PGROUNDUP(length) / PGSIZE;
+  
 
   // Allocate physical memory and update page table
   char *mem;
@@ -215,6 +289,7 @@ sys_mmap(void) {
   mmap_entry->fd = fd;
   mmap_entry->length = PGROUNDUP(length);
   mmap_entry->offset = offset;
+  
   cprintf("made the struct\n");
   
   cprintf("initialized values\n");
@@ -271,10 +346,7 @@ sys_munmap(void)
       //*pte &= ~PTE_P;
       cprintf("After clearing PTE_P, pte[%d] = %x pgdir = %x\n", i, *pte);
 
-      pde_t *pde = &currProc->pgdir[PDX(addr)];
-      cprintf("pde before: %x\n", *pde);
-      *pde &= ~PTE_P;
-      cprintf("pde after: %x\n", *pde);
+      *pte &= ~PTE_P;
 
     } else {
       cprintf("PTE note present for the page %d\n", i);
@@ -282,8 +354,7 @@ sys_munmap(void)
 
   }
 
-  // Still have to remove the mmap entry from the struct - not implemented yet
-
+  // Remove the mmap entry from the struct
   struct mmap *mmap_entry = 0; //= &curproc->mmaps[curproc->num_mmaps++];
   int i;
   for(i = 0; i < MAX_MMAPS; i++) {
