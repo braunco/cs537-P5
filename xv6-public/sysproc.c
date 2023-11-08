@@ -116,12 +116,44 @@ int find_next_mmap(struct mmap mmaps[], int req_pages) {
     min = 0;
   }
 
-  for (int i = 0; i < MAX_MMAPS - 1; i++) {
-    if ((sorted[i]->va + sorted[i]->length) + (req_pages*PGSIZE) < sorted[i+1]->va) {
-      return ((int)sorted[i]->va + sorted[i]->length);
+  cprintf("Sorted Array:\n");
+  for(int i=0; i<MAX_MMAPS; i++)
+  {
+    cprintf("%d: %x\n", i, sorted[i]->va);
+  }
+  cprintf("\n");
+
+  for(int j=0; j<MAX_MMAPS; j++)
+  {
+    uint thisSlotStart;
+
+    if(sorted[j]->va == 0) {
+      thisSlotStart = MMAPVIRTBASE;
+    }
+    else {
+      thisSlotStart = (int)(sorted[j]->va + sorted[j]->length);
+    }
+
+    uint thisSlotEnd;
+    //if not the last element
+    if(j < MAX_MMAPS - 1 && sorted[j+1]->va != 0)
+    {
+      thisSlotEnd = (int)sorted[j+1]->va;
+    }
+    else //if last element, need to compare to end of memory instead of next element
+    {
+      thisSlotEnd = KERNBASE;
+    }
+
+    uint spaceInSlot = thisSlotEnd - thisSlotStart;
+
+    cprintf("Trying slot %d/%d, start=%p, end=%p, space=%d, need=%d\n", j, j+1, thisSlotStart, thisSlotEnd, spaceInSlot, req_pages * PGSIZE);
+
+    if(spaceInSlot >= (req_pages * PGSIZE)) {
+      cprintf("taking this slot\n");
+      return thisSlotStart;
     }
   }
-
   
   return -1;
 }
@@ -131,7 +163,7 @@ int find_next_mmap(struct mmap mmaps[], int req_pages) {
 int
 sys_mmap(void) {
   // TODO: IMPLEMENTATION HERE
-  cprintf("entered the sys_mmap() function call\n");
+  //cprintf("entered the sys_mmap() function call\n");
   int addrInt, length, prot, flags, fd, offset;
   void* addr;
   
@@ -223,7 +255,7 @@ sys_mmap(void) {
     //          (to get to the end of the current mapping you hit so you can start checking free space again)
     
     int next_addr = find_next_mmap(curproc->mmaps, num_pages);
-    cprintf("\t%d\n", next_addr);
+    //cprintf("\t%p\n", next_addr);
     if(next_addr != -1) {
       start_addr = (void*)next_addr;
     }
@@ -246,6 +278,8 @@ sys_mmap(void) {
     // }
   }
 
+  cprintf("Actual address being used: %p\n", start_addr);
+
   if (start_addr >= end_addr) {
     return -1;
   }
@@ -258,7 +292,7 @@ sys_mmap(void) {
   // Allocate physical memory and update page table
   char *mem;
   for (int i = 0; i < num_pages; i++) {
-    cprintf("Entering allocation for loop\n");
+    //cprintf("Entering allocation for loop\n");
     mem = kalloc();
     if (mem == 0) {
       cprintf("kalloc failed\n");
@@ -290,9 +324,9 @@ sys_mmap(void) {
   mmap_entry->length = PGROUNDUP(length);
   mmap_entry->offset = offset;
   
-  cprintf("made the struct\n");
+  //cprintf("made the struct\n");
   
-  cprintf("initialized values\n");
+  //cprintf("initialized values\n");
 
   return (int)start_addr; // I think this is the correct cast
 }
@@ -338,13 +372,13 @@ sys_munmap(void)
     pte_t *pte = walkpgdir(currProc->pgdir, pageAddr, 0);
     if(pte && (*pte & PTE_P)) {
       // Free the physical mem if the page is present
-      cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
+      //cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
       char *pAddr = P2V(PTE_ADDR(*pte));
       kfree(pAddr);
 
       // Clear the page table entry
       //*pte &= ~PTE_P;
-      cprintf("After clearing PTE_P, pte[%d] = %x pgdir = %x\n", i, *pte);
+      //cprintf("After clearing PTE_P, pte[%d] = %x pgdir = %x\n", i, *pte);
 
       *pte &= ~PTE_P;
 

@@ -141,23 +141,34 @@ int main(void)
     */
 
     int length6 = 4096;
-    void *addr6a = mmap((void*)0x60000000, length6, PROT_WRITE, MAP_ANON |MAP_FIXED, -1, 0);
-    void *addr6b = mmap((void*)0x70000000, length6, PROT_WRITE, MAP_ANON |MAP_FIXED, -1, 0);
-    void *addr6c = mmap((void*)0x71000000, length6, PROT_WRITE, MAP_ANON |MAP_FIXED, -1, 0);
+    void *addr6a = mmap((void*)0x60000000, length6 * 2, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
+    void *addr6b = mmap((void*)0x60000000 + (length6 * 5), length6 * 2, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
+    void *addr6c = mmap((void*)0x60000000, length6 * 4, PROT_WRITE, MAP_ANON, -1, 0);
+    void *addr6d = mmap((void*)0x60000000, length6 * 3, PROT_WRITE, MAP_ANON, -1, 0);
     
+    printf(1, "%p, %p, %p, %p\n", addr6a, addr6b, addr6c, addr6d);
+
     // Dealloc the mem
-    if (munmap(addr6a, length6) == -1) {
+    if (munmap(addr6a, length6 * 2) == -1) {
         printf(1, "munmap a failed\n");
         exit();
     }
-    if (munmap(addr6b, length6) == -1) {
+    printf(1, "a\n");
+    if (munmap(addr6b, length6 * 2) == -1) {
         printf(1, "munmap b failed\n");
         exit();
     }
-    if (munmap(addr6c, length6) == -1) {
+    printf(1, "b\n");
+    if (munmap(addr6c, length6 * 4) == -1) {
         printf(1, "munmap c failed\n");
         exit();
     }
+    printf(1, "c\n");
+    if (munmap(addr6d, length6 * 3) == -1) {
+        printf(1, "munmap d failed\n");
+        exit();
+    }
+    printf(1, "d\n");
     /*
     // Connor's test:
     int length = 12000; // 3 pages
