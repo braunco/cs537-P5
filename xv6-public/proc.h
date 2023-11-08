@@ -16,6 +16,7 @@ struct mmap {
   int length;     // Size of the memory mapping
   int prot;
   int fd;
+  struct file* fp;
   int offset;
   // Add more fields if necessary
 };

@@ -571,6 +571,18 @@ sys_mmap(void) {
     return -1;
   }
 
+  struct file* fp = 0;
+  if(!(flags & MAP_ANONYMOUS) && fd > 0) {
+    if (argfd(4, &fd, &fp) < 0) {
+      cprintf("error fd\n");
+      cprintf("fd=%d\n", fd);
+      return -1;
+    }
+    else {
+      filedup(fp);
+    }
+  }
+
   int num_pages = PGROUNDUP(length) / PGSIZE;
 
   if (flags & MAP_FIXED) {
@@ -631,16 +643,9 @@ sys_mmap(void) {
     }
 
     //file backed mapping
-    if(!(flags & MAP_ANONYMOUS)) {
-      struct file* filep;
+    if(fp != 0) {
 
-      if (argfd(4, &fd, &filep) < 0) {
-        cprintf("error fd\n");
-        cprintf("fd=%d\n", fd);
-        return -1;
-      }
-
-      if(fileread(filep, mem, PGSIZE) < 0) {
+      if(fileread(fp, mem, PGSIZE) < 0) {
         cprintf("fileread failed\n");
       }
 
@@ -664,6 +669,7 @@ sys_mmap(void) {
   mmap_entry->fd = fd;
   mmap_entry->length = PGROUNDUP(length);
   mmap_entry->offset = offset;
+  mmap_entry->fp = fp;
   
   //cprintf("made the struct\n");
   
@@ -704,6 +710,19 @@ sys_munmap(void)
 
   struct proc *currProc = myproc();
 
+  struct file* fp = 0;
+  for(int i=0; i<MAX_MMAPS; i++) {
+    if(currProc->mmaps[i].va == addr) {
+      fp = currProc->mmaps[i].fp;
+      break;
+    }
+  }
+
+  // if(fp == 0) {
+  //   cprintf("ERROR: fp not gotten\n");
+  //   return -1;
+  // }
+
   cprintf("For addr: %p\n", addr);
 
   for(int i=0; i<numpages; i++)
@@ -717,6 +736,12 @@ sys_munmap(void)
       // Free the physical mem if the page is present
       cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
       char *pAddr = P2V(PTE_ADDR(*pte));
+
+      if(fp != 0) {
+        fp->off = 0;
+        filewrite(fp, pAddr, PGSIZE);
+      }      
+
       kfree(pAddr);
 
       // Clear the page table entry
