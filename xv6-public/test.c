@@ -140,58 +140,83 @@ int main(void)
     printf(1, "Dealloc worked correctly.");
     */
 
-    int length6 = 4096;
-    char *addr6a = mmap((void*)0x60000000, length6 * 2, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
+    // int length6 = 4096;
+    // char *addr6a = mmap((void*)0x60000000, length6 * 2, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
 
-    addr6a[0] = 'a';
-    addr6a[1] = '\0';
-    printf(1, "%s\n", addr6a);
+    // addr6a[0] = 'a';
+    // addr6a[1] = '\0';
+    // printf(1, "%s\n", addr6a);
 
-    char *addr6b = mmap((void*)0x60000000 + (length6 * 5), length6 * 2, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
+    // char *addr6b = mmap((void*)0x60000000 + (length6 * 5), length6 * 2, PROT_WRITE, MAP_ANON|MAP_FIXED, -1, 0);
 
-    addr6b[0] = 'b';
-    addr6b[1] = '\0';
-    printf(1, "%s\n", addr6b);
+    // addr6b[0] = 'b';
+    // addr6b[1] = '\0';
+    // printf(1, "%s\n", addr6b);
 
-    char *addr6c = mmap((void*)0x60000000, length6 * 4, PROT_WRITE, MAP_ANON, -1, 0);
+    // char *addr6c = mmap((void*)0x60000000, length6 * 4, PROT_WRITE, MAP_ANON, -1, 0);
 
-    addr6c[0] = 'c';
-    addr6c[1] = '\0';
-    printf(1, "%s\n", addr6c);
+    // addr6c[0] = 'c';
+    // addr6c[1] = '\0';
+    // printf(1, "%s\n", addr6c);
     
-    char *addr6d = mmap((void*)0x60000000, length6 * 3, PROT_WRITE, MAP_ANON, -1, 0);
+    // char *addr6d = mmap((void*)0x60000000, length6 * 3, PROT_WRITE, MAP_ANON, -1, 0);
 
-    addr6d[0] = 'd';
-    addr6d[1] = '\0';
-    printf(1, "%s\n", addr6d);
+    // addr6d[0] = 'd';
+    // addr6d[1] = '\0';
+    // printf(1, "%s\n", addr6d);
     
-    printf(1, "%p, %p, %p, %p\n", addr6a, addr6b, addr6c, addr6d);
+    // printf(1, "%p, %p, %p, %p\n", addr6a, addr6b, addr6c, addr6d);
 
-    // Dealloc the mem
-    if (munmap(addr6a, length6 * 2) == -1) {
-        printf(1, "munmap a failed\n");
-        exit();
-    }
-    //printf(1, "%s\n", addr6a);
-    //printf(1, "a\n");
-    if (munmap(addr6b, length6 * 2) == -1) {
-        printf(1, "munmap b failed\n");
-        exit();
-    }
-    //printf(1, "%s\n", addr6b); //THIS ONE ISNT FAILING
-    //printf(1, "b\n");
-    if (munmap(addr6c, length6 * 4) == -1) {
-        printf(1, "munmap c failed\n");
-        exit();
-    }
-    //printf(1, "%s\n", addr6c);
-    //printf(1, "c\n");
-    if (munmap(addr6d, length6 * 3) == -1) {
-        printf(1, "munmap d failed\n");
-        exit();
-    }
-    printf(1, "%s\n", addr6d); //this one also doesn't fail
+    // // Dealloc the mem
+    // if (munmap(addr6a, length6 * 2) == -1) {
+    //     printf(1, "munmap a failed\n");
+    //     exit();
+    // }
+    // //printf(1, "%s\n", addr6a);
+    // //printf(1, "a\n");
+    // if (munmap(addr6b, length6 * 2) == -1) {
+    //     printf(1, "munmap b failed\n");
+    //     exit();
+    // }
+    // //printf(1, "%s\n", addr6b); //THIS ONE ISNT FAILING
+    // //printf(1, "b\n");
+    // if (munmap(addr6c, length6 * 4) == -1) {
+    //     printf(1, "munmap c failed\n");
+    //     exit();
+    // }
+    // //printf(1, "%s\n", addr6c);
+    // //printf(1, "c\n");
+    // if (munmap(addr6d, length6 * 3) == -1) {
+    //     printf(1, "munmap d failed\n");
+    //     exit();
+    // }
+    // printf(1, "%s\n", addr6d); //this one also doesn't fail
     //printf(1, "d\n");
+    
+
+    //new test: test7
+    char* addr7 = mmap((void*)0, 100, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_SHARED, -1, 0);
+
+    printf(1, "addr7: %p\n", addr7);
+
+    addr7[0] = 'a';
+    addr7[1] = '\0';
+
+    int pid = fork();
+
+    if(pid == 0) { //child
+        printf(1, "child process: %p\n", addr7);
+        if(addr7[1] == '\0'){
+            printf(1, "succ\n");
+        }
+        printf(1, "child val: %s\n", addr7);
+    }
+    else { //parent
+        wait();
+        printf(1, "parent process: %p\n", addr7);
+        printf(1, "parent val: %s\n", addr7);
+    }
+
     /*
     // Connor's test:
     int length = 12000; // 3 pages
