@@ -116,12 +116,12 @@ int find_next_mmap(struct mmap mmaps[], int req_pages) {
     min = 0;
   }
 
-  cprintf("Sorted Array:\n");
-  for(int i=0; i<MAX_MMAPS; i++)
-  {
-    cprintf("%d: %x\n", i, sorted[i]->va);
-  }
-  cprintf("\n");
+  // cprintf("Sorted Array:\n");
+  // for(int i=0; i<MAX_MMAPS; i++)
+  // {
+  //   cprintf("%d: %x\n", i, sorted[i]->va);
+  // }
+  // cprintf("\n");
 
   for(int j=0; j<MAX_MMAPS; j++)
   {
@@ -147,10 +147,10 @@ int find_next_mmap(struct mmap mmaps[], int req_pages) {
 
     uint spaceInSlot = thisSlotEnd - thisSlotStart;
 
-    cprintf("Trying slot %d/%d, start=%p, end=%p, space=%d, need=%d\n", j, j+1, thisSlotStart, thisSlotEnd, spaceInSlot, req_pages * PGSIZE);
+    //cprintf("Trying slot %d/%d, start=%p, end=%p, space=%d, need=%d\n", j, j+1, thisSlotStart, thisSlotEnd, spaceInSlot, req_pages * PGSIZE);
 
     if(spaceInSlot >= (req_pages * PGSIZE)) {
-      cprintf("taking this slot\n");
+      //cprintf("taking this slot\n");
       return thisSlotStart;
     }
   }
@@ -239,21 +239,6 @@ sys_mmap(void) {
       }
     }
   } else {
-    // Find a free region in the address space
-    // TODO: Implement the logic to find a free region
-    // For loop through the virtual memory (i)
-    //    if virtual address has free starting addr is true (I see what you're saying about a for loop to see addresses - maybe there's a way just to see if the bits are occupied?)
-    //          Nested for loop to run until a new mapping is hit (j)
-    //          space available = difference between (i) and (j)
-    //          if space available >= requested length
-    //                add to address starting at (i)
-    //          else
-    //                get the current map length and add it to i
-    //                (to get to the end of the current mapping you hit so you can starting checking free space again)
-    //    else 
-    //          get the current mmap length and add it to i 
-    //          (to get to the end of the current mapping you hit so you can start checking free space again)
-    
     int next_addr = find_next_mmap(curproc->mmaps, num_pages);
     //cprintf("\t%p\n", next_addr);
     if(next_addr != -1) {
@@ -262,20 +247,6 @@ sys_mmap(void) {
     else {
       return -1;
     }
-    // for(int i = MMAPVIRTBASE; i < KERNBASE; i+=PGSIZE) { // make sure that I can iterate properly
-    //   if(1/*virtual address at i doesn't have a mapping (delete the one)*/) {
-    //     for(int j = i; j < MMAPVIRTBASE; j+=PGSIZE) {
-    //       if(1/*Virtual address at j doesn't have a mapping (delete the one)*/) {
-            
-    //       } else { // Virtual address at j does have a mapping
-    //         /*int difference = i + j*/
-    //         if (1/*difference >= curproc->mmaps->length (delete the one)*/) {
-    //       }
-    //     }
-    //   } else {
-    //     i += 1/*this i's current mapping's length (delete the 1)*/;
-    //   }
-    // }
   }
 
   cprintf("Actual address being used: %p\n", start_addr);
@@ -306,6 +277,8 @@ sys_mmap(void) {
       return -1;
     }
   }
+
+  
 
 
   // Store the mapping information
@@ -363,6 +336,8 @@ sys_munmap(void)
 
   struct proc *currProc = myproc();
 
+  cprintf("For addr: %p\n", addr);
+
   for(int i=0; i<numpages; i++)
   {
     // Calcualte the address of the page to unmap
@@ -372,21 +347,24 @@ sys_munmap(void)
     pte_t *pte = walkpgdir(currProc->pgdir, pageAddr, 0);
     if(pte && (*pte & PTE_P)) {
       // Free the physical mem if the page is present
-      //cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
+      cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
       char *pAddr = P2V(PTE_ADDR(*pte));
       kfree(pAddr);
 
       // Clear the page table entry
       //*pte &= ~PTE_P;
-      //cprintf("After clearing PTE_P, pte[%d] = %x pgdir = %x\n", i, *pte);
+      
 
       *pte &= ~PTE_P;
+      cprintf("After clearing PTE_P, pte[%d] = %x\n", i, *pte);
 
     } else {
       cprintf("PTE note present for the page %d\n", i);
     }
 
   }
+
+  cprintf("\n");
 
   // Remove the mmap entry from the struct
   struct mmap *mmap_entry = 0; //= &curproc->mmaps[curproc->num_mmaps++];
