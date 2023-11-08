@@ -6,7 +6,8 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-//#include "mmap.h"
+#include "mmap.h"
+#include "vm.h"
 
 struct {
   struct spinlock lock;
@@ -206,6 +207,24 @@ fork(void)
     np->state = UNUSED;
     return -1;
   }
+
+  for(int i=0; i<MAX_MMAPS; i++) {
+    struct mmap *currMap = &curproc->mmaps[i];
+
+    if(currMap->flags & MAP_SHARED) {
+      //TODO: prob need to go through all pages in this mapping
+
+      //do_mmap((int)currMap->va, currMap->length, currMap->prot, currMap->flags, currMap->fd, currMap->offset, currMap->fp, np);
+      pte_t *parentPTE = walkpgdir(curproc->pgdir, currMap->va, 0);
+      uint physAddr = PTE_ADDR(*parentPTE);
+      physAddr = (uint)P2V(physAddr);
+      cprintf("mem new: %p, %p\n", physAddr, *parentPTE);
+      if(mappages(np->pgdir, currMap->va, PGSIZE, V2P(physAddr), PTE_W|PTE_U) < 0) {
+        cprintf("map pages copy fail\n");
+      }
+    }
+  }
+
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
@@ -541,6 +560,194 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int find_next_mmap(struct mmap mmaps[], int req_pages) {
+  struct mmap *min = 0;
+  struct mmap prev = (struct mmap) { (void*)(MMAPVIRTBASE - 1) };
+  struct mmap *sorted[MAX_MMAPS];
+  memset(&sorted, 0, sizeof(struct mmap*) * 32);
+
+  for (int a = 0; a < MAX_MMAPS; a++) {
+    sorted[a]->va = 0;
+  }
+
+  for (int i = 0; i < MAX_MMAPS; i++) {
+    if(mmaps[i].va == 0) continue;
+    for(int j = 0; j < MAX_MMAPS; j++) {
+      if(mmaps[j].va == 0) continue;
+      if ((min == 0 || mmaps[j].va < min->va) && (int)mmaps[j].va > (int)prev.va) {
+        min = &mmaps[j];
+      }
+    }
+    sorted[i] = min;
+    prev.va = min->va;
+    min = 0;
+  }
+
+  // cprintf("Sorted Array:\n");
+  // for(int i=0; i<MAX_MMAPS; i++)
+  // {
+  //   cprintf("%d: %x\n", i, sorted[i]->va);
+  // }
+  // cprintf("\n");
+
+  for(int j=0; j<MAX_MMAPS; j++)
+  {
+    uint thisSlotStart;
+
+    if(sorted[j]->va == 0) {
+      thisSlotStart = MMAPVIRTBASE;
+    }
+    else {
+      thisSlotStart = (int)(sorted[j]->va + sorted[j]->length);
+    }
+
+    uint thisSlotEnd;
+    //if not the last element
+    if(j < MAX_MMAPS - 1 && sorted[j+1]->va != 0)
+    {
+      thisSlotEnd = (int)sorted[j+1]->va;
+    }
+    else //if last element, need to compare to end of memory instead of next element
+    {
+      thisSlotEnd = KERNBASE;
+    }
+
+    uint spaceInSlot = thisSlotEnd - thisSlotStart;
+
+    //cprintf("Trying slot %d/%d, start=%p, end=%p, space=%d, need=%d\n", j, j+1, thisSlotStart, thisSlotEnd, spaceInSlot, req_pages * PGSIZE);
+
+    if(spaceInSlot >= (req_pages * PGSIZE)) {
+      //cprintf("taking this slot\n");
+      return thisSlotStart;
+    }
+  }
+  
+  return -1;
+}
+
+int do_mmap(int addrInt, int length, int prot, int flags, int fd, int offset, struct file* fp, struct proc *curproc)
+{
+    void* addr = (void*) addrInt;
+
+    if((int)addr % PGSIZE != 0) { //I THINK ITS OK TO BE INT SINCE FROM 0x60... to 0x80... (AND NOT UNSIGNED) 
+        cprintf("error with pgsize\n");
+        return -1;
+    }
+
+  cprintf("addrInt=%d, addr=%p, length=%d, prot=%d, flags=%d, fd=%d, offset=%d\n", addrInt, addr, length, prot, flags, fd, offset);
+
+  //struct proc *curproc = myproc();
+  void *start_addr = (void*)MMAPVIRTBASE;
+  void *end_addr = (void*)KERNBASE;
+
+  if(curproc->num_mmaps >= 32) {
+    cprintf("too many maps\n");
+    return -1;
+  }
+
+  int num_pages = PGROUNDUP(length) / PGSIZE;
+
+  if (flags & MAP_FIXED) {
+
+    if(addrInt < MMAPVIRTBASE || addrInt > KERNBASE) {
+      return -1;
+    }
+
+    start_addr = addr;
+    end_addr = addr + PGROUNDUP(length);
+    cprintf("end addr=%d\n", end_addr);
+    pte_t *pte_found;
+    if((pte_found = walkpgdir(curproc->pgdir, start_addr, 0)) != 0)
+    {
+      if(*pte_found & PTE_P)
+      {
+        cprintf("fixed set and already mapped\n");
+        return -1;
+      }
+    }
+  } else {
+    int next_addr = find_next_mmap(curproc->mmaps, num_pages);
+    //cprintf("\t%p\n", next_addr);
+    if(next_addr != -1) {
+      start_addr = (void*)next_addr;
+    }
+    else {
+      return -1;
+    }
+  }
+
+  cprintf("Actual address being used: %p\n", start_addr);
+
+  if (start_addr >= end_addr) {
+    return -1;
+  }
+
+  // Update the process's page table
+  // TODO: Implement the logic to update the page table lazily
+  // Calculate the number of pages needed
+  
+
+  // Allocate physical memory and update page table
+  char *mem;
+  for (int i = 0; i < num_pages; i++) {
+    //cprintf("Entering allocation for loop\n");
+
+    mem = kalloc();
+    
+    if (mem == 0) {
+      cprintf("kalloc failed\n");
+      return -1;
+    }
+    memset(mem, 0, PGSIZE);
+
+    
+
+    if (mappages(curproc->pgdir, start_addr + (i * PGSIZE), PGSIZE, V2P(mem), PTE_W|PTE_U) < 0) {
+      cprintf("mappages failed\n");
+      kfree(mem);
+      return -1;
+    }
+
+    pte_t *testPTE = walkpgdir(curproc->pgdir, start_addr + (i * PGSIZE), 0);
+    cprintf("mem orig: %p, %p\n", mem, *testPTE);
+
+    //file backed mapping
+    if(fp != 0) {
+
+      if(fileread(fp, mem, PGSIZE) < 0) {
+        cprintf("fileread failed\n");
+      }
+
+    }
+  }
+
+
+
+  // Store the mapping information
+  struct mmap *mmap_entry = 0; //= &curproc->mmaps[curproc->num_mmaps++];
+  int i;
+  for(i = 0; i < MAX_MMAPS; i++) {
+    if(curproc->mmaps[i].va == 0) {
+      mmap_entry = &curproc->mmaps[i];
+      break;
+    }
+  }
+  mmap_entry->va = start_addr;
+  mmap_entry->prot = prot;
+  mmap_entry->flags = flags;
+  mmap_entry->fd = fd;
+  mmap_entry->length = PGROUNDUP(length);
+  mmap_entry->offset = offset;
+  mmap_entry->fp = fp;
+  
+  //cprintf("made the struct\n");
+  
+  //cprintf("initialized values\n");
+
+  curproc->num_mmaps++;
+  return (int)start_addr; // I think this is the correct cast
 }
 
 /*

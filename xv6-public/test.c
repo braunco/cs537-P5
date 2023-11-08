@@ -202,13 +202,12 @@ int main(void)
     addr7[0] = 'a';
     addr7[1] = '\0';
 
+    printf(1, "testing original value: %s\n", addr7);
+
     int pid = fork();
 
     if(pid == 0) { //child
         printf(1, "child process: %p\n", addr7);
-        if(addr7[1] == '\0'){
-            printf(1, "succ\n");
-        }
         printf(1, "child val: %s\n", addr7);
     }
     else { //parent
