@@ -18,6 +18,7 @@ struct mmap {
   int fd;
   struct file* fp;
   int offset;
+  int isChild;
   // Add more fields if necessary
 };
 

@@ -209,11 +209,13 @@ int main(void)
     if(pid == 0) { //child
         printf(1, "child process: %p\n", addr7);
         printf(1, "child val: %s\n", addr7);
+        //sleep(1000);
     }
     else { //parent
         wait();
         printf(1, "parent process: %p\n", addr7);
         printf(1, "parent val: %s\n", addr7);
+        //wait();
     }
 
     /*

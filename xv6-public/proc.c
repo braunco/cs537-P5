@@ -222,7 +222,17 @@ fork(void)
       if(mappages(np->pgdir, currMap->va, PGSIZE, V2P(physAddr), PTE_W|PTE_U) < 0) {
         cprintf("map pages copy fail\n");
       }
+      np->mmaps[i].isChild = 1;
     }
+
+    np->mmaps[i].fd = curproc->mmaps[i].fd;
+    np->mmaps[i].flags = curproc->mmaps[i].flags;
+    np->mmaps[i].fp = curproc->mmaps[i].fp;
+    np->mmaps[i].length = curproc->mmaps[i].length;
+    np->mmaps[i].offset = curproc->mmaps[i].offset;
+    np->mmaps[i].prot = curproc->mmaps[i].prot;
+    np->mmaps[i].va = curproc->mmaps[i].va;
+
   }
 
   np->sz = curproc->sz;
@@ -268,6 +278,14 @@ exit(void)
     if(curproc->ofile[fd]){
       fileclose(curproc->ofile[fd]);
       curproc->ofile[fd] = 0;
+    }
+  }
+
+  //remove all mappings that have another reference so OS doesn't free
+  for(int i=0; i<MAX_MMAPS; i++) {
+    struct mmap* currMap = &curproc->mmaps[i];
+    if(currMap->isChild && currMap->flags & MAP_SHARED) { //if shared
+      do_munmap((int)currMap->va, currMap->length);
     }
   }
 
@@ -741,6 +759,7 @@ int do_mmap(int addrInt, int length, int prot, int flags, int fd, int offset, st
   mmap_entry->length = PGROUNDUP(length);
   mmap_entry->offset = offset;
   mmap_entry->fp = fp;
+  mmap_entry->isChild = 0;
   
   //cprintf("made the struct\n");
   
@@ -748,6 +767,111 @@ int do_mmap(int addrInt, int length, int prot, int flags, int fd, int offset, st
 
   curproc->num_mmaps++;
   return (int)start_addr; // I think this is the correct cast
+}
+
+struct file {
+  enum { FD_NONE, FD_PIPE, FD_INODE } type;
+  int ref; // reference count
+  char readable;
+  char writable;
+  struct pipe *pipe;
+  struct inode *ip;
+  uint off;
+};
+
+int do_munmap(int addrInt, int length)
+{
+  void* addr;
+
+  // Convert void* and round down to the nearest page boundary
+  addr = (void*)PGROUNDDOWN(addrInt);
+  //cprintf("addr=%p\n", addr);
+  length = PGROUNDUP(length); // round length up to the nearst page boundary
+
+  // Calculate the # of pages to unmap
+  int numpages = length / PGSIZE;
+  if(numpages <=0) {
+    cprintf("Num pages = %d", numpages);
+    return -1; //invalid length
+  }
+
+  struct proc *currProc = myproc();
+
+  struct file* fp = 0;
+  for(int i=0; i<MAX_MMAPS; i++) {
+    if(currProc->mmaps[i].va == addr) {
+      fp = currProc->mmaps[i].fp;
+      break;
+    }
+  }
+
+  // if(fp == 0) {
+  //   cprintf("ERROR: fp not gotten\n");
+  //   return -1;
+  // }
+
+  cprintf("For addr: %p\n", addr);
+
+  for(int i=0; i<numpages; i++)
+  {
+    // Calcualte the address of the page to unmap
+    void *pageAddr = addr + (i * PGSIZE);
+
+    // Get the page table entry for the page
+    pte_t *pte = walkpgdir(currProc->pgdir, pageAddr, 0);
+    if(pte && (*pte & PTE_P)) {
+      // Free the physical mem if the page is present
+      cprintf("Before clearing PTE_P, pte[%d] = %x\n", i, *pte);
+      char *pAddr = P2V(PTE_ADDR(*pte));
+
+      if(fp != 0) {
+        fp->off = 0;
+        filewrite(fp, pAddr, PGSIZE);
+      }      
+
+      int mapIndex = 0;
+      for(int i=0; i<MAX_MMAPS; i++) {
+        if(currProc->mmaps[i].va == addr) {
+          mapIndex = i;
+        }
+      }
+      if(!currProc->mmaps[mapIndex].isChild)
+        kfree(pAddr);
+
+      // Clear the page table entry
+      //*pte &= ~PTE_P;
+      
+
+      *pte &= ~PTE_P;
+      cprintf("After clearing PTE_P, pte[%d] = %x\n", i, *pte);
+
+    } else {
+      cprintf("PTE note present for the page %d\n", i);
+    }
+
+  }
+
+  cprintf("\n");
+
+  // Remove the mmap entry from the struct
+  struct mmap *mmap_entry = 0; //= &curproc->mmaps[curproc->num_mmaps++];
+  int i;
+  for(i = 0; i < MAX_MMAPS; i++) {
+    if(currProc->mmaps[i].va == addr) {
+      mmap_entry = &currProc->mmaps[i];
+      memset((void*)mmap_entry, 0, sizeof(struct mmap));
+      break;
+    }
+  }
+
+  // struct proc *p = myproc();
+  // struct mmap *curmap;
+  // for(int i = 0; i < 32; i++) {
+  //   curmap = &p->mmaps[i];
+  //   cprintf("[%d]th mmap virtual address: %p, and length: %d\n", i, curmap->va, curmap->length);
+  // }
+  currProc->num_mmaps--;
+  return 0;
 }
 
 /*
