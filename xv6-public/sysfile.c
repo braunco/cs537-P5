@@ -629,12 +629,24 @@ sys_mmap(void) {
       kfree(mem);
       return -1;
     }
+
+    //file backed mapping
+    if(!(flags & MAP_ANONYMOUS)) {
+      struct file* filep;
+
+      if (argfd(4, &fd, &filep) < 0) {
+        cprintf("error fd\n");
+        cprintf("fd=%d\n", fd);
+        return -1;
+      }
+
+      if(fileread(filep, mem, PGSIZE) < 0) {
+        cprintf("fileread failed\n");
+      }
+
+    }
   }
 
-  //file backed mapping
-  if(!(flags & MAP_ANONYMOUS)) {
-    
-  }
 
 
   // Store the mapping information
