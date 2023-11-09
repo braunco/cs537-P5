@@ -188,6 +188,7 @@ void            clearpteu(pde_t *pgdir, char *uva);
 
 int do_mmap(int addrInt, int length, int prot, int flags, int fd, int offset, struct file* fp, struct proc *curproc);
 int do_munmap(int addrInt, int length);
+void handle_page_fault();
 
 // number of elements in fixed-size array
 #define NELEM(x) (sizeof(x)/sizeof((x)[0]))

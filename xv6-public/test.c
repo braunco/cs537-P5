@@ -193,6 +193,8 @@ int main(void)
     // printf(1, "%s\n", addr6d); //this one also doesn't fail
     //printf(1, "d\n");
     
+    char* addrTest = (char*)0x100000;
+    addrTest[0] = 'a';
 
     //new test: test7
     char* addr7 = mmap((void*)0, 100, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);

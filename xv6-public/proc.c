@@ -884,6 +884,27 @@ int do_munmap(int addrInt, int length)
   return 0;
 }
 
+void handle_page_fault() 
+{
+  // PAGE_FAULT_HANDLER:
+    // /* Case 2 - MAP_GROWSUP */
+    // if guard_page:
+    //   handle it
+
+    uint attemptedVirtAddr = rcr2();
+    //pte_t *attemptedPte = 
+
+      
+    // /* Case 3 - None of the Above - Error */
+    cprintf("Segmentation Fault\n");
+    if(kill(myproc()->pid) < 0) {
+      cprintf("ERROR: failed to kill process %d\n", myproc()->pid);
+    }
+    else {
+      exit();
+    }
+}
+
 /*
 void*
 mmap(void* addr, int length, int prot, int flags, int fd, int offset) {
