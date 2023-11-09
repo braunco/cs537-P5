@@ -223,6 +223,16 @@ fork(void)
         cprintf("map pages copy fail\n");
       }
       np->mmaps[i].isChild = 1;
+    } 
+    else if (currMap->flags & MAP_PRIVATE) { //if not map shared, its map private.
+      //assuming previous mappings are done correctly, add on map_fixed when calling mmap to get right spot in mem
+      //TODO: something with files is different
+      do_mmap((int)currMap->va, currMap->length, currMap->prot, currMap->flags | MAP_FIXED, currMap->fd, currMap->offset, currMap->fp, np);
+      pte_t *parentPTE = walkpgdir(curproc->pgdir, currMap->va, 0);
+      uint parentPhysAddr = PTE_ADDR(*parentPTE);
+      pte_t *newPte = walkpgdir(np->pgdir, currMap->va, 0);
+      uint newPhysAddr = PTE_ADDR(*newPte);
+      memmove(P2V(newPhysAddr), P2V(parentPhysAddr), PGSIZE);
     }
 
     np->mmaps[i].fd = curproc->mmaps[i].fd;

@@ -195,7 +195,7 @@ int main(void)
     
 
     //new test: test7
-    char* addr7 = mmap((void*)0, 100, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_SHARED, -1, 0);
+    char* addr7 = mmap((void*)0, 100, PROT_READ|PROT_WRITE, MAP_ANONYMOUS|MAP_PRIVATE, -1, 0);
 
     printf(1, "addr7: %p\n", addr7);
 
@@ -207,7 +207,7 @@ int main(void)
     int pid = fork();
 
     if(pid == 0) { //child
-        printf(1, "child process: %p\n", addr7);
+        //addr7[0] = 'b';
         printf(1, "child val: %s\n", addr7);
         //sleep(1000);
     }
