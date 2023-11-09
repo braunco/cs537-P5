@@ -590,7 +590,7 @@ procdump(void)
   }
 }
 
-int find_next_mmap(struct mmap mmaps[], int req_pages) {
+int find_next_mmap(struct mmap mmaps[], int req_pages, int growsup_flag) {
   struct mmap *min = 0;
   struct mmap prev = (struct mmap) { (void*)(MMAPVIRTBASE - 1) };
   struct mmap *sorted[MAX_MMAPS];
@@ -613,12 +613,6 @@ int find_next_mmap(struct mmap mmaps[], int req_pages) {
     min = 0;
   }
 
-  // cprintf("Sorted Array:\n");
-  // for(int i=0; i<MAX_MMAPS; i++)
-  // {
-  //   cprintf("%d: %x\n", i, sorted[i]->va);
-  // }
-  // cprintf("\n");
 
   for(int j=0; j<MAX_MMAPS; j++)
   {
@@ -644,11 +638,23 @@ int find_next_mmap(struct mmap mmaps[], int req_pages) {
 
     uint spaceInSlot = thisSlotEnd - thisSlotStart;
 
-    //cprintf("Trying slot %d/%d, start=%p, end=%p, space=%d, need=%d\n", j, j+1, thisSlotStart, thisSlotEnd, spaceInSlot, req_pages * PGSIZE);
+    if(growsup_flag) {
+    cprintf("Entered grows_up flag conditional\n");
+      // Check if we can grow the current mapping by one page size
+      if(spaceInSlot >= PGSIZE && (thisSlotEnd - (thisSlotStart + PGSIZE)) >= PGSIZE) {
 
-    if(spaceInSlot >= (req_pages * PGSIZE)) {
-      //cprintf("taking this slot\n");
-      return thisSlotStart;
+        // There is enough space to grow the mapping by one page size
+        // without coming within one page size of the next mapping.
+        return thisSlotStart;
+      } else {
+        cprintf("Handles page fault correctly\n");
+        handle_page_fault();
+      }
+    } else { // normal case
+      // Check if there is enough space for the requested number of pages
+      if(spaceInSlot >= (req_pages * PGSIZE)) {
+        return thisSlotStart;
+      }
     }
   }
   
@@ -696,7 +702,7 @@ int do_mmap(int addrInt, int length, int prot, int flags, int fd, int offset, st
       }
     }
   } else {
-    int next_addr = find_next_mmap(curproc->mmaps, num_pages);
+    int next_addr = find_next_mmap(curproc->mmaps, num_pages, 0);
     //cprintf("\t%p\n", next_addr);
     if(next_addr != -1) {
       start_addr = (void*)next_addr;
@@ -710,6 +716,21 @@ int do_mmap(int addrInt, int length, int prot, int flags, int fd, int offset, st
 
   if (start_addr >= end_addr) {
     return -1;
+  }
+
+
+  if (flags & MAP_GROWSUP) {
+    // Handle the MAP_GROWSUP flag
+    int new_addr = find_next_mmap(curproc->mmaps, num_pages+1, 1); // Check for one page growth
+    if(new_addr != -1) {
+      // Extend the mapping by one page
+      num_pages++;
+      // Update the length of the existing mapping
+        curproc->mmaps->length += PGSIZE;
+    } else {
+      // Cannot extend the mapping, handle the error
+      handle_page_fault();
+    }
   }
 
   // Update the process's page table
@@ -891,7 +912,7 @@ void handle_page_fault()
     // if guard_page:
     //   handle it
 
-    uint attemptedVirtAddr = rcr2();
+    //uint attemptedVirtAddr = rcr2(); // NEED THIS
     //pte_t *attemptedPte = 
 
       
